@@ -1,0 +1,49 @@
+import mysql.connector
+import csv
+
+# Database credentials
+host = "testdb.chasa4mgyg27.ap-south-1.rds.amazonaws.com"
+port = 3306
+user = "admin"
+password = "techmo123"
+database_name = "tenant-1712298103"
+column_name = "name,Discounted_price,Unit_price"
+
+try:
+    # Establish connection to MySQL database
+    conn = mysql.connector.connect(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database_name
+    )
+
+    # Create cursor object to execute SQL queries
+    cursor = conn.cursor()
+
+    # Query the specified column from the products table in the database
+    cursor.execute(f"SELECT {column_name} FROM products")
+
+    # Fetch all values of the specified column
+    column_values = cursor.fetchall()
+
+    # Write column values to CSV file
+    with open(f'{column_name}_column.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        # writer.writerow([column_name])
+
+        for value in column_values:
+            writer.writerow(value)
+
+    print(f"CSV file '{column_name}_column.csv' has been created successfully.")
+
+except mysql.connector.Error as error:
+    print("Error connecting to MySQL server:", error)
+
+finally:
+    # Close cursor and connection
+    if 'cursor' in locals() and cursor is not None:
+        cursor.close()
+    if 'conn' in locals() and conn is not None:
+        conn.close()
