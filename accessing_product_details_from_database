@@ -47,3 +47,4 @@ finally:
         cursor.close()
     if 'conn' in locals() and conn is not None:
         conn.close()
+
