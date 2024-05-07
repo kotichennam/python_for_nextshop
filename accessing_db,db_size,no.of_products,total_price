@@ -1,0 +1,77 @@
+import mysql.connector
+import csv
+
+try:
+    # Establish connection to MySQL server
+    mydb = mysql.connector.connect(
+        host="testdb.chasa4mgyg27.ap-south-1.rds.amazonaws.com",
+        port=3306,
+        user="admin",
+        password="techmo123"
+    )
+
+    # Create a cursor object to execute queries
+    cursor = mydb.cursor()
+
+    # Execute the query to get all databases
+    cursor.execute("SHOW DATABASES")
+
+    # Fetch all rows (databases)
+    databases = cursor.fetchall()
+
+    price_per_MB = 100
+    price_per_product = 5
+
+    # Keep track of processed databases
+    processed_databases = set()
+
+    # Open a CSV file in write mode
+    with open('database_products_data.csv', mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+
+        # Write the header row
+        writer.writerow(['Database', 'Database Size (MB)', 'Number of Products','Total Price(Rs)'])
+
+        # Iterate through each database
+        for db in databases:
+            db_name = db[0]
+
+            # Exclude system databases
+            if db_name not in ('information_schema', 'mysql', 'performance_schema', 'sys') and db_name not in processed_databases:
+                # Add the processed database to the set
+                processed_databases.add(db_name)
+
+                # Query to check if the 'products' table exists in the current database
+                cursor.execute("SELECT COUNT(*) FROM information_schema.tables "
+                               "WHERE table_schema = %s AND table_name = 'products'", (db_name,))
+                result = cursor.fetchone()
+
+                # If 'products' table exists, fetch its data and write to CSV
+                if result[0] > 0:
+                    # Query to calculate the size of the current database
+                    cursor.execute("SELECT SUM(data_length + index_length) / (1024 * 1024) AS 'Size (MB)' "
+                                   "FROM information_schema.tables "
+                                   "WHERE table_schema = %s", (db_name,))
+                    db_size = cursor.fetchone()[0]
+
+                    # Query to count the number of products in the 'products' table
+                    cursor.execute("SELECT COUNT(*) FROM `{}`.products".format(db_name))
+                    num_products = cursor.fetchone()[0]
+
+                    Total_price_per_MB = price_per_MB * db_size
+                    Total_price_per_products = price_per_product * num_products
+                    Total_price = Total_price_per_MB + Total_price_per_products
+
+                    # Write database information to CSV file
+                    writer.writerow([db_name, db_size, num_products, Total_price])
+
+    # Close the cursor and connection
+    cursor.close()
+    mydb.close()
+    print("CSV file created successfully.")
+
+except mysql.connector.Error as error:
+    print("MySQL Connector Error:", error)
+
+except Exception as e:
+    print("Error:", e)
